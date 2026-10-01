@@ -98,3 +98,22 @@ def test_budget_blocks_api_call(conn):
     client = FakeClient([])
     assert "budget" in agent.agent_turn(client, conn, [{"role": "user", "content": "x"}]).lower()
     assert client.calls == []
+
+
+@pytest.mark.parametrize("content", ["sk-test\n", "ANTHROPIC_API_KEY=sk-test\n", "# c\nexport ANTHROPIC_API_KEY=\"sk-test\"\n"])
+def test_load_api_key_formats(tmp_path, monkeypatch, content):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    f = tmp_path / ".env"
+    f.write_text(content)
+    agent.load_api_key(f)
+    import os
+    assert os.environ["ANTHROPIC_API_KEY"] == "sk-test"
+
+
+def test_load_api_key_does_not_override_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "already")
+    f = tmp_path / ".env"
+    f.write_text("other\n")
+    agent.load_api_key(f)
+    import os
+    assert os.environ["ANTHROPIC_API_KEY"] == "already"

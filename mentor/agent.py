@@ -3,7 +3,9 @@
 Models: Sonnet 5.5 plays interviewer/debriefer; Haiku 4.5 writes quiz questions (cheaper).
 """
 import json
+import os
 import random
+from pathlib import Path
 
 import anthropic
 
@@ -127,7 +129,21 @@ def agent_turn(client, conn, messages):
         messages.append({"role": "user", "content": results})  # all results in ONE message
 
 
+def load_api_key(env_file=Path(__file__).parent.parent / ".env"):
+    """Use ANTHROPIC_API_KEY if already set; otherwise read .env (bare key or KEY=value)."""
+    if os.environ.get("ANTHROPIC_API_KEY") or not Path(env_file).exists():
+        return
+    for line in Path(env_file).read_text().splitlines():
+        line = line.strip().removeprefix("export ")
+        if not line or line.startswith("#"):
+            continue
+        key = line.split("=", 1)[1] if line.startswith("ANTHROPIC_API_KEY=") else line
+        os.environ["ANTHROPIC_API_KEY"] = key.strip().strip("\"'")
+        return
+
+
 def main():
+    load_api_key()
     conn = db.connect()
     db.seed_gaps(conn)
     client = anthropic.Anthropic()
